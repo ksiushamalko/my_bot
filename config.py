@@ -1,7 +1,3 @@
-import os
-from dotenv import load_dotenv
-
-load_dotenv()
-
-BOT_TOKEN = os.getenv("BOT_TOKEN")
-DB_URL = "sqlite+aiosqlite:///deadlines.db"
+TOKEN = "8886871553:AAGufeCUSbeUaqXRPGewclA4IMDCtJ2Tc6g"
+DB = "deadlines.db"
+API = f"https://api.telegram.org/bot{TOKEN}"

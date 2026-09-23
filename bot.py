@@ -1,31 +1,41 @@
-import asyncio
-import logging
+import json
+import time
+import urllib.request
+import urllib.parse
 
-from aiogram import Bot, Dispatcher
-from aiogram.client.default import DefaultBotProperties
-from aiogram.enums import ParseMode
-
-from config import BOT_TOKEN
+from config import API
 from database import init_db
-from handlers import router
-from scheduler import setup_scheduler
-
-logging.basicConfig(level=logging.INFO)
+from handlers import handle_message, handle_callback
 
 
-async def main():
-    await init_db()
+def poll():
+    offset = None
+    while True:
+        params = {"timeout": 30}
+        if offset is not None:
+            params["offset"] = offset
+        try:
+            req = urllib.request.Request(f"{API}/getUpdates", data=urllib.parse.urlencode(params).encode())
+            with urllib.request.urlopen(req, timeout=60) as r:
+                data = json.loads(r.read().decode())
+        except Exception as e:
+            print("poll error:", e)
+            time.sleep(2)
+            continue
+        if not data.get("ok"):
+            time.sleep(1)
+            continue
+        for upd in data["result"]:
+            offset = upd["update_id"] + 1
+            try:
+                if "message" in upd:
+                    handle_message(upd["message"])
+                elif "callback_query" in upd:
+                    handle_callback(upd["callback_query"])
+            except Exception as e:
+                print("handler error:", e)
 
-    bot = Bot(token=BOT_TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
-    dp = Dispatcher()
-    dp.include_router(router)
 
-    scheduler = setup_scheduler(bot)
-    scheduler.start()
-
-    print("🤖 Бот запущен...")
-    await dp.start_polling(bot)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+init_db()
+print("Бот запущен...")
+poll()
